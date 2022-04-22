@@ -29,6 +29,17 @@ static void msgbox(const char *title, UINT utype, const char *msg, ...)
 #define error(title, msg, ...) msgbox(title, MB_OK | MB_ICONERROR, msg, ##__VA_ARGS__)
 
 /* MuJS functions */
+
+static void muJSPanic(js_State *J)
+{
+  error("Javascript", "%s", js_tostring(J, -1));
+}
+
+static void muJSReport(js_State* J, const char* message)
+{
+  info("Javascript", "%s", message);
+}
+
 static void alert(js_State *J)
 {
 	const char *msg = js_tostring(J, 1);
@@ -202,6 +213,8 @@ BOOL APIENTRY DllMain (HINSTANCE hInst     /* Library instance handle. */ ,
       case DLL_PROCESS_ATTACH:
 	
 	J = js_newstate(NULL, NULL, JS_STRICT);
+  js_atpanic(J, muJSPanic);
+  js_setreport(J, muJSReport);
 	js_newcfunction(J, alert, "alert", 1);
 	js_setglobal(J, "alert");
 	
