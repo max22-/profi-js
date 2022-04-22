@@ -37,7 +37,9 @@ static void alert(js_State *J)
 int load_script()
 {
   if(js_dofile(J, script_path) != 0) {
-    error("Javascript", "Error while loading script.js");
+    char msg[1024];
+    snprintf(msg, sizeof(msg), "Failed to load %s", script_path);
+    error("Javascript", msg);
     return 0;
   }
   return 1;
@@ -204,11 +206,11 @@ BOOL APIENTRY DllMain (HINSTANCE hInst     /* Library instance handle. */ ,
 	js_setglobal(J, "alert");
 	
 	len = GetModuleFileName( hInst, script_path, MAX_PATH );
-	while(script_path[len] != '\\' && len > 0) len--;
+	while(script_path[len] != '.' && len > 0) len--;
 	if(len > 0) {
 	  script_path[len+1] = 0;
-	  strcat(script_path, "script.js");
-	  //info("test", script_path);
+	  strcat(script_path, "js");
+	  info("test", script_path);
 	  load_script();
 	}
 	else error("DLL", "Failed to find DLL path");
