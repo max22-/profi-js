@@ -1,3 +1,4 @@
+#include <stdarg.h>
 #include "dll.h"
 extern "C" {
   #include <mujs.h>
@@ -16,15 +17,18 @@ const unsigned char COUNT = 2;
 
 TCHAR script_path[MAX_PATH];
 
-void info(const char *title, const char* msg)
+void msgbox(const char *title, UINT utype, const char *msg, ...)
 {
-  MessageBox(NULL,TEXT(msg),TEXT(title), MB_OK);
+  char buf[1024];
+  va_list args;
+  va_start(args, msg);
+  vsnprintf(buf, sizeof(buf), msg, args);
+  va_end(args);
+  MessageBox(NULL,TEXT(buf),TEXT(title), utype);
 }
 
-void error(const char *title, const char* msg)
-{
-  MessageBox(NULL,TEXT(msg),TEXT(title), MB_OK | MB_ICONERROR);
-}
+#define info(title, msg, ...) msgbox(title, MB_OK, msg, ##__VA_ARGS__)
+#define error(title, msg, ...) msgbox(title, MB_OK | MB_ICONERROR, msg, ##__VA_ARGS__)
 
 /* MuJS functions */
 static void alert(js_State *J)
@@ -37,9 +41,7 @@ static void alert(js_State *J)
 int load_script()
 {
   if(js_dofile(J, script_path) != 0) {
-    char msg[1024];
-    snprintf(msg, sizeof(msg), "Failed to load %s", script_path);
-    error("Javascript", msg);
+    error("Javascript", "Failed to load %s", script_path);
     return 0;
   }
   return 1;
@@ -217,8 +219,8 @@ BOOL APIENTRY DllMain (HINSTANCE hInst     /* Library instance handle. */ ,
         break;
 
       case DLL_PROCESS_DETACH:
-	info("Javascript", "Detach");
-	js_freestate(J);
+	     info("Javascript", "Detach");
+	     js_freestate(J);
         break;
 
       case DLL_THREAD_ATTACH:
