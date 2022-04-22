@@ -1,6 +1,7 @@
 #include <stdarg.h>
 #include <mujs.h>
 #include "dll.h"
+#include "builtin_script.h"
 
 js_State *J;
 
@@ -217,6 +218,7 @@ BOOL APIENTRY DllMain (HINSTANCE hInst     /* Library instance handle. */ ,
   js_setreport(J, muJSReport);
 	js_newcfunction(J, alert, "alert", 1);
 	js_setglobal(J, "alert");
+  js_dostring(J, builtin_script);
 	
 	len = GetModuleFileName( hInst, script_path, MAX_PATH );
 	while(script_path[len] != '.' && len > 0) len--;

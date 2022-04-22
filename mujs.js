@@ -1,22 +1,5 @@
-function NumInputs()
-{
-    return 9;
-}
-
-function NumOutputs()
-{
-    return 3;
-}
-
-function GetInputName(c)
-{
-    return "I" + c;
-}
-
-function GetOutputName(c)
-{
-    return "O" + c;
-}
+var inputs = ["I1", "I2", "I3"];
+var outputs = ["O1", "O2", "O7"];
 
 function CConfigure()
 {
