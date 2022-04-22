@@ -1,8 +1,6 @@
 #include <stdarg.h>
+#include <mujs.h>
 #include "dll.h"
-extern "C" {
-  #include <mujs.h>
-}
 
 js_State *J;
 
