@@ -15,7 +15,7 @@ const unsigned char COUNT = 2;
 
 TCHAR script_path[MAX_PATH];
 
-void msgbox(const char *title, UINT utype, const char *msg, ...)
+static void msgbox(const char *title, UINT utype, const char *msg, ...)
 {
   char buf[1024];
   va_list args;
@@ -36,7 +36,7 @@ static void alert(js_State *J)
 	js_pushundefined(J);
 }
 
-int load_script()
+static int load_script()
 {
   if(js_dofile(J, script_path) != 0) {
     error("Javascript", "Failed to load %s", script_path);
