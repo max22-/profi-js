@@ -223,7 +223,6 @@ BOOL APIENTRY DllMain (HINSTANCE hInst     /* Library instance handle. */ ,
 	if(len > 0) {
 	  script_path[len+1] = 0;
 	  strcat(script_path, "js");
-	  info("test", script_path);
 	  load_script();
 	}
 	else error("DLL", "Failed to find DLL path");
