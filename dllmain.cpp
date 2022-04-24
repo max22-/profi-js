@@ -4,17 +4,14 @@
 #include "builtin_script.h"
 
 js_State *J;
-
-//Eingang 0 = CLK, Eingang 1 = RST
-const unsigned char CLK = 0;
-const unsigned char RST = 1;
-  
-//Bezeichnung für User-variabelen
-const unsigned char CLK_OLD = 0;
-const unsigned char RST_OLD = 1;
-const unsigned char COUNT = 2;
-
 TCHAR script_path[MAX_PATH];
+
+static double *GInput = NULL, *GOutput = NULL, *GUser = NULL;
+
+#define SETUP() {  load_script(); GInput = PInput; GOutput = POutput; GUser = PUser; }
+#define SETUP_CALC() { GInput = PInput; GOutput = POutput; GUser = PUser; }
+#define SETUP_1() {  load_script(); GUser = PUser; }
+#define TEARDOWN() { GInput = NULL; GOutput = NULL; GUser = NULL; }
 
 static void msgbox(const char *title, UINT utype, const char *msg, ...)
 {
@@ -43,10 +40,67 @@ static void muJSReport(js_State* J, const char* message)
 
 static void alert(js_State *J)
 {
-	const char *msg = js_tostring(J, 1);
-	info("Javascript", msg);
+  if(js_isundefined(J, 1))
+    info("Javascript", "undefined");
+  else if(js_isnull(J, 1))
+    info("Javascript", "null");
+  else if(js_isboolean(J, 1)) {
+    if(js_toboolean(J, 1))
+      info("Javascript", "true");
+    else
+      info("Javascript", "false");
+  }
+  else if(js_isnumber(J, 1))
+    info("Javascript", "%f", js_tonumber(J, 1));
+  else if(js_isstring(J, 1))
+    info("Javascript", "%s", js_tostring(J, 1));
+  js_pop(J, 1);
 	js_pushundefined(J);
 }
+
+static void pinput(js_State* J)
+{
+  char buf[256];
+  if(!js_isstring(J, 1)) {
+    js_pop(J, 1);
+    js_typeerror(J, "pinput: expected string");
+    js_pushundefined(J);
+    return;
+  }
+  const char* name = js_tostring(J, 1);
+  info("javascript", "name=%s", name);
+  snprintf(buf, sizeof(buf), "inputs.indexOf(\"%s\")");
+  js_dostring(J, buf);
+  int pin = js_tointeger(J, -1);
+  js_pop(J, 1);
+  if(pin == -1) {
+    js_error(J, "Input \"%s\" not found", name);
+    js_pushundefined(J);
+    return;
+  }
+  if(GInput != NULL)
+    js_pushnumber(J, GInput[pin]);
+  else {
+    js_error(J, "DLL error (GInput == NULL)");
+    js_pushundefined(J);
+  }
+}
+
+static void poutput(js_State* J)
+{
+
+}
+
+static void puser_set(js_State* J)
+{
+
+}
+
+static void puser_get(js_State* J)
+{
+
+}
+
 
 static int load_script()
 {
@@ -88,7 +142,6 @@ DLLEXPORT unsigned char _stdcall NumOutputs()
   return res;
 }
   
-//Aufruf von PROFILAB, liest die Namen der Eingänge 
 DLLEXPORT void _stdcall GetInputName(unsigned char Channel,unsigned char *Name)
 {
   js_getglobal(J, "GetInputName");
@@ -103,7 +156,6 @@ DLLEXPORT void _stdcall GetInputName(unsigned char Channel,unsigned char *Name)
   js_pop(J, 1);
 }
   
-//Aufruf von PROFILAB, liest die Namen der Eingänge 
 DLLEXPORT void _stdcall GetOutputName(unsigned char Channel,unsigned char *Name)
 {
   js_getglobal(J, "GetOutputName");
@@ -118,90 +170,46 @@ DLLEXPORT void _stdcall GetOutputName(unsigned char Channel,unsigned char *Name)
   js_pop(J, 1);
 }
   
-//Aufruf von PROFILAB, setzt bei Programmstart den "Counter"auf "0"+ setzt alle Ausgaenge zurueck
 DLLEXPORT void _stdcall CSimStart(double *PInput, double *POutput, double *PUser)
 {
-  load_script();
-  /*
-      int i;
-  
-      PUser[COUNT] = 0;               //"Counter" ruecksetzen
-      for (i = 0; i < outputs; i++)   //Alle Ausgaenge ruecksetzen
-                POutput[i] = 0;
-  */
+  SETUP();
+
+  js_getglobal(J, "CSimStart");
+  js_pushnull(J);
+  if(js_pcall(J, 0))
+    error("Javascript", "Error while calling CSimStart() : %s\n", js_trystring(J, -1, "Error"));
+  js_pop(J, 1);
+
+  TEARDOWN();
+
 }
   
-//Aufruf von PROFILAB,hier steht die eigentliche Funktion der DLL
-//
 DLLEXPORT void _stdcall CCalculate(double *PInput, double *POutput, double *PUser)
 {
-  /*
-      int i, iCount;
-  
-      if (PInput[RST] < 2.5) // RST Eingang LOW?
-      {
-            if (PUser[RST_OLD] > 2.5) //fallende Flanke von RST?
-            {
-                  PUser[COUNT] = 0; //"Counter" ruecksetzen
-                  for (i = 0; i < outputs; i++)  //alle Ausgaenge ruecksetzen
-                        POutput[i] = 0;
-            }
-      }
-      PUser[RST_OLD] = PInput[RST]; //Zustand von Eingang RST für naechsten Aufruf speichern
-  
-  
-      if (PInput[CLK] > 2.5)  //Eingang CLK high?
-      {
-            if (PUser[CLK_OLD] < 2.5) //steigende Flanke von CLK?
-            {
-                    PUser[COUNT] += 1; //"Counter" inkrementieren
-                        if (PUser[COUNT] > 255)      PUser[COUNT] = 0; //überprüfen auf Ueberlauf
-						                                               //8-Bit max 256
-                        iCount = (int)PUser[COUNT];  //von double nach int
-						POutput[8] = iCount;
-                        //die entsprechenden Ausgaenge binaer setzen
-						//low = 0, high = 5
-                        if ((iCount & 1))   POutput[0] = 5; else POutput[0] = 0;
-                        if ((iCount & 2))   POutput[1] = 5; else POutput[1] = 0;
-                        if ((iCount & 4))   POutput[2] = 5; else POutput[2] = 0;
-                        if ((iCount & 8))   POutput[3] = 5; else POutput[3] = 0;
-                        if ((iCount & 16))  POutput[4] = 5; else POutput[4] = 0;
-                        if ((iCount & 32))  POutput[5] = 5; else POutput[5] = 0;
-                        if ((iCount & 64))  POutput[6] = 5; else POutput[6] = 0;
-                        if ((iCount & 128)) POutput[7] = 5; else POutput[7] = 0;
-            }
-			      }
-      PUser[CLK_OLD] = PInput[CLK]; // Wert des Eigangs CLK für naechsten Aufruf speichern
-  */
+  SETUP_CALC();
+  TEARDOWN();
 }
   
-// Aufruf von PROFILAB, wird beim Simulations-Stop aufgerufen
+
 DLLEXPORT void _stdcall CSimStop(double *PInput, double *POutput, double *PUser)
 {
-  
+  SETUP();
+  TEARDOWN();
 }
-// erforderlich für MessageBox
-int WINAPI WinMain ( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR szComdLine, int iCmdShow);  
-//Aufruf von PROFILAB, wird im Configurations-Menü aufgerufen
+// Required for MessageBox
+int WINAPI WinMain ( HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR szComdLine, int iCmdShow);
 
 DLLEXPORT void _stdcall CConfigure(double *PUser)
 {
-  info("Javascript", "Reloading script");
-  load_script();
-    js_getglobal(J, "CConfigure");
-    js_pushnull(J);
-    if(js_pcall(J, 0)) {
-      error("Javascript", "Error while calling CConfigure()");
-      js_pop(J, 1);
-      return;
-    }
-    js_pop(J, 1);
-    MessageBox(NULL,TEXT("nichts zu configurieren"),TEXT("Config"), MB_OK);
+  SETUP_1();
+  js_getglobal(J, "CConfigure");
+  js_pushnull(J);
+
+  if(js_pcall(J, 0))
+    error("Javascript", "Error while calling CConfigure() : %s\n", js_trystring(J, -1, "Error"));
+  js_pop(J, 1);
+  TEARDOWN();
 }
-
-
-
-
 
 BOOL APIENTRY DllMain (HINSTANCE hInst     /* Library instance handle. */ ,
                        DWORD reason        /* Reason this function is being called. */ ,
@@ -218,6 +226,14 @@ BOOL APIENTRY DllMain (HINSTANCE hInst     /* Library instance handle. */ ,
   js_setreport(J, muJSReport);
 	js_newcfunction(J, alert, "alert", 1);
 	js_setglobal(J, "alert");
+  js_newcfunction(J, pinput, "pinput", 1);
+  js_setglobal(J, "pinput");
+  js_newcfunction(J, poutput, "poutput", 2);
+  js_setglobal(J, "poutput");
+  js_newcfunction(J, puser_set, "puser_set", 2);
+  js_setglobal(J, "PUser_set");
+  js_newcfunction(J, puser_get, "puser_get", 1);
+  js_setglobal(J, "PUser_get");
   js_dostring(J, builtin_script);
 	
 	len = GetModuleFileName( hInst, script_path, MAX_PATH );
@@ -227,7 +243,7 @@ BOOL APIENTRY DllMain (HINSTANCE hInst     /* Library instance handle. */ ,
 	  strcat(script_path, "js");
 	  load_script();
 	}
-	else error("DLL", "Failed to find DLL path");
+  else error("DLL", "Failed to find DLL path");
         break;
 
       case DLL_PROCESS_DETACH:
