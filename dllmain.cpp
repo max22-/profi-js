@@ -1,9 +1,11 @@
-#include "builtin_script.h"
 #include "dll.h"
 #include <mujs.h>
 #include <stdarg.h>
 
 js_State *J;
+const char builtin_script_js[] = { 
+  #include "builtin_script.xxd"
+};
 TCHAR script_path[MAX_PATH];
 
 static double *GInput = NULL, *GOutput = NULL, *GUser = NULL;
@@ -31,6 +33,16 @@ static double *GInput = NULL, *GOutput = NULL, *GUser = NULL;
     GInput = NULL;                                                             \
     GOutput = NULL;                                                            \
     GUser = NULL;                                                              \
+  }
+
+#define VOID_CALL(f)                                                           \
+  {                                                                            \
+    js_getglobal(J, f);                                                        \
+    js_pushnull(J);                                                            \
+    if (js_pcall(J, 0))                                                        \
+      error("Javascript", "Error while calling %s() : %s\n", f,                \
+            js_trystring(J, -1, "Error"));                                     \
+    js_pop(J, 1);                                                              \
   }
 
 static void msgbox(const char *title, UINT utype, const char *msg, ...) {
@@ -174,26 +186,21 @@ DLLEXPORT void _stdcall GetOutputName(unsigned char Channel,
 DLLEXPORT void _stdcall CSimStart(double *PInput, double *POutput,
                                   double *PUser) {
   SETUP();
-
-  js_getglobal(J, "CSimStart");
-  js_pushnull(J);
-  if (js_pcall(J, 0))
-    error("Javascript", "Error while calling CSimStart() : %s\n",
-          js_trystring(J, -1, "Error"));
-  js_pop(J, 1);
-
+  VOID_CALL("_CSimStart");
   TEARDOWN();
 }
 
 DLLEXPORT void _stdcall CCalculate(double *PInput, double *POutput,
                                    double *PUser) {
   SETUP_CALC();
+  VOID_CALL("_CCalculate");
   TEARDOWN();
 }
 
 DLLEXPORT void _stdcall CSimStop(double *PInput, double *POutput,
                                  double *PUser) {
   SETUP();
+  VOID_CALL("_CSimStop");
   TEARDOWN();
 }
 // Required for MessageBox
@@ -202,13 +209,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
 DLLEXPORT void _stdcall CConfigure(double *PUser) {
   SETUP_1();
-  js_getglobal(J, "CConfigure");
-  js_pushnull(J);
-
-  if (js_pcall(J, 0))
-    error("Javascript", "Error while calling CConfigure() : %s\n",
-          js_trystring(J, -1, "Error"));
-  js_pop(J, 1);
+  VOID_CALL("_CConfigure")
   TEARDOWN();
 }
 
@@ -233,7 +234,7 @@ BOOL APIENTRY DllMain(HINSTANCE hInst /* Library instance handle. */,
     js_setglobal(J, "PUser_set");
     js_newcfunction(J, puser_get, "puser_get", 1);
     js_setglobal(J, "PUser_get");
-    js_dostring(J, builtin_script);
+    js_dostring(J, (const char*)builtin_script_js);
 
     len = GetModuleFileName(hInst, script_path, MAX_PATH);
     while (script_path[len] != '.' && len > 0)
