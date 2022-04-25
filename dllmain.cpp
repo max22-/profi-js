@@ -87,21 +87,16 @@ static void alert(js_State *J) {
 }
 
 static void pinput(js_State *J) {
-  char buf[256];
-  if (!js_isstring(J, 1)) {
+  if (!js_isnumber(J, 1)) {
     js_pop(J, 1);
-    js_typeerror(J, "pinput: expected string");
+    js_typeerror(J, "pinput: expected number");
     js_pushundefined(J);
     return;
   }
-  const char *name = js_tostring(J, 1);
-  info("javascript", "name=%s", name);
-  snprintf(buf, sizeof(buf), "inputs.indexOf(\"%s\")");
-  js_dostring(J, buf);
-  int pin = js_tointeger(J, -1);
+  int pin = js_tointeger(J, 1);
   js_pop(J, 1);
-  if (pin == -1) {
-    js_error(J, "Input \"%s\" not found", name);
+  if (pin < 0 || pin > 255) {
+    js_error(J, "Invalid input number (%d)", pin);
     js_pushundefined(J);
     return;
   }
@@ -113,11 +108,71 @@ static void pinput(js_State *J) {
   }
 }
 
-static void poutput(js_State *J) {}
+static void poutput(js_State *J) {
+  if (!js_isnumber(J, 1) || !js_isnumber(J, 2)) {
+    js_pop(J, 2);
+    js_typeerror(J, "poutput: expected numbers");
+    js_pushundefined(J);
+    return;
+  }
+  int pin = js_tointeger(J, 1);
+  double val = js_tonumber(J, 2);
+  js_pop(J, 2);
+  if (pin < 0 || pin > 255) {
+    js_error(J, "Invalid output number (%d)", pin);
+    js_pushundefined(J);
+    return;
+  }
+  if (GOutput != NULL)
+    GOutput[pin] = val;
+  else
+    js_error(J, "DLL error (GOutput == NULL)");
+  js_pushundefined(J);
+}
 
-static void puser_set(js_State *J) {}
+static void puser_set(js_State *J) {
+  if (!js_isnumber(J, 1) || !js_isnumber(J, 2)) {
+    js_pop(J, 2);
+    js_typeerror(J, "puser_set: expected numbers");
+    js_pushundefined(J);
+    return;
+  }
+  int var = js_tointeger(J, 1);
+  double val = js_tonumber(J, 2);
+  js_pop(J, 2);
+  if (var < 0 || var > 255) {
+    js_error(J, "Invalid user variable number (%d)", var);
+    js_pushundefined(J);
+    return;
+  }
+  if (GUser != NULL)
+    GUser[var] = val;
+  else
+    js_error(J, "DLL error (GUser == NULL)");
+  js_pushundefined(J);
+}
 
-static void puser_get(js_State *J) {}
+static void puser_get(js_State *J) {
+  if (!js_isnumber(J, 1)) {
+    js_pop(J, 1);
+    js_typeerror(J, "puser_get: expected number");
+    js_pushundefined(J);
+    return;
+  }
+  int var = js_tointeger(J, 1);
+  js_pop(J, 1);
+  if (var < 0 || var > 255) {
+    js_error(J, "Invalid user variable number (%d)", var);
+    js_pushundefined(J);
+    return;
+  }
+  if (GUser != NULL)
+    js_pushnumber(J, GUser[var]);
+  else {
+    js_error(J, "DLL error (GUser == NULL)");
+    js_pushundefined(J);
+  } 
+}
 
 static int load_script() {
   if (js_dofile(J, script_path) != 0) {
@@ -231,9 +286,9 @@ BOOL APIENTRY DllMain(HINSTANCE hInst /* Library instance handle. */,
     js_newcfunction(J, poutput, "poutput", 2);
     js_setglobal(J, "poutput");
     js_newcfunction(J, puser_set, "puser_set", 2);
-    js_setglobal(J, "PUser_set");
+    js_setglobal(J, "puser_set");
     js_newcfunction(J, puser_get, "puser_get", 1);
-    js_setglobal(J, "PUser_get");
+    js_setglobal(J, "puser_get");
     js_dostring(J, (const char*)builtin_script_js);
 
     len = GetModuleFileName(hInst, script_path, MAX_PATH);
