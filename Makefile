@@ -1,7 +1,7 @@
 DLL = mujs.dll
 
 all: $(DLL)
-CC = i686-w64-mingw32-gcc.exe
+CC = i686-w64-mingw32-gcc
 CFLAGS = -Imujs
 
 OBJS = dllmain.o libmujs.o
