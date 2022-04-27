@@ -18,77 +18,42 @@ function GetOutputName(c)
     return outputs[c];
 }
 
-function _gen_PInput()
+function PInput(name) 
 {
-    var PInput = {};
-    for(var i = 0; i < inputs.length; i++)
-        PInput[inputs[i]] = pinput(i);
-    return PInput;
+    var n = inputs.indexOf(name);
+    if(n == -1) {
+        alert("Input " + name + " doesn't exist");
+        return 0;
+    }
+    else return pinput(n);
 }
 
-function _gen_POutput()
+function POutput(name, val)
 {
-    var POutput = {};
-    for(var i = 0; i < outputs.length; i++)
-        POutput[outputs[i]] = 0;
-
-    return POutput;
+    var n = outputs.indexOf(name);
+    if(n == -1) {
+        alert("Output " + name + "doesn't exist");
+        return;
+    }
+    else poutput(n, val);
 }
 
-function _gen_PUser()
+function PUser_get(name)
 {
-    var PUser = {};
-    for(var i = 0; i < user.length; i++)
-        PUser[user[i]] = puser_get(i);
-    return PUser;
+    var n = user.indexOf(name);
+    if(n == -1) {
+        alert("User variable " + name + " doesn't exist");
+        return 0;
+    }
+    else return puser_get(n);
 }
 
-function _write_POutput(POutput)
+function PUser_set(name, val)
 {
-    for(var i = 0; i < outputs.length; i++)
-        poutput(i, POutput[outputs[i]]);
+    var n = user.indexOf(name);
+    if(n == -1) {
+        alert("User variable " + name + "doesn't exist");
+        return;
+    }
+    else puser_set(n, val);
 }
-
-function _write_PUser(PUser)
-{
-    for(var i = 0; i < user.length; i++)
-        puser_set(i, PUser[user[i]]);
-}
-
-function _CConfigure()
-{
-    var PUser = _gen_PUser();
-    CConfigure(PUser);
-    _write_PUser(PUser);
-}
-
-function _CSimStart()
-{
-    var PInput = _gen_PInput();
-    var POutput = _gen_POutput();
-    var PUser = _gen_PUser();
-    CSimStart(PInput, POutput, PUser);
-    _write_POutput(POutput);
-    _write_PUser(PUser);
-}
-
-function _CCalculate()
-{
-    var PInput = _gen_PInput();
-    var POutput = _gen_POutput();
-    var PUser = _gen_PUser();
-    CCalculate(PInput, POutput, PUser);
-    _write_POutput(POutput);
-    _write_PUser(PUser);
-}
-
-function _CSimStop()
-{
-    var PInput = _gen_PInput();
-    var POutput = _gen_POutput();
-    var PUser = _gen_PUser();
-    CSimStop(PInput, POutput, PUser);
-    _write_POutput(POutput);
-    _write_PUser(PUser);
-}
-

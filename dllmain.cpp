@@ -247,21 +247,21 @@ DLLEXPORT void _stdcall GetOutputName(unsigned char Channel,
 DLLEXPORT void _stdcall CSimStart(double *PInput, double *POutput,
                                   double *PUser) {
   SETUP();
-  VOID_CALL("_CSimStart");
+  VOID_CALL("CSimStart");
   TEARDOWN();
 }
 
 DLLEXPORT void _stdcall CCalculate(double *PInput, double *POutput,
                                    double *PUser) {
   SETUP_CALC();
-  VOID_CALL("_CCalculate");
+  VOID_CALL("CCalculate");
   TEARDOWN();
 }
 
 DLLEXPORT void _stdcall CSimStop(double *PInput, double *POutput,
                                  double *PUser) {
   SETUP();
-  VOID_CALL("_CSimStop");
+  VOID_CALL("CSimStop");
   TEARDOWN();
 }
 // Required for MessageBox
@@ -270,7 +270,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance,
 
 DLLEXPORT void _stdcall CConfigure(double *PUser) {
   SETUP_1();
-  VOID_CALL("_CConfigure")
+  VOID_CALL("CConfigure")
   TEARDOWN();
 }
 
