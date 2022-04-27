@@ -19,7 +19,10 @@ builtin_script.xxd: builtin_script.js
 	xxd -i < builtin_script.js > builtin_script.xxd
 	echo ", 0x00" >> builtin_script.xxd
 
-.PHONY: clean
+.PHONY: clean format
 
 clean:
 	rm -f $(DLL) $(OBJS) builtin_script.xxd
+
+format:
+	clang-format -i dllmain.cpp dll.h
