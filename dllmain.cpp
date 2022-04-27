@@ -3,8 +3,8 @@
 #include <stdarg.h>
 
 js_State *J;
-const char builtin_script_js[] = { 
-  #include "builtin_script.xxd"
+const char builtin_script_js[] = {
+#include "builtin_script.xxd"
 };
 TCHAR script_path[MAX_PATH];
 
@@ -43,6 +43,12 @@ static double *GInput = NULL, *GOutput = NULL, *GUser = NULL;
       error("Javascript", "Error while calling %s() : %s\n", f,                \
             js_trystring(J, -1, "Error"));                                     \
     js_pop(J, 1);                                                              \
+  }
+
+#define REGISTER_C_FUNCTION(name, n_args)                                      \
+  {                                                                            \
+    js_newcfunction(J, name, #name, n_args);                                   \
+    js_setglobal(J, #name);                                                    \
   }
 
 static void msgbox(const char *title, UINT utype, const char *msg, ...) {
@@ -171,7 +177,7 @@ static void puser_get(js_State *J) {
   else {
     js_error(J, "DLL error (GUser == NULL)");
     js_pushundefined(J);
-  } 
+  }
 }
 
 static int load_script() {
@@ -279,17 +285,12 @@ BOOL APIENTRY DllMain(HINSTANCE hInst /* Library instance handle. */,
     J = js_newstate(NULL, NULL, JS_STRICT);
     js_atpanic(J, muJSPanic);
     js_setreport(J, muJSReport);
-    js_newcfunction(J, alert, "alert", 1);
-    js_setglobal(J, "alert");
-    js_newcfunction(J, pinput, "pinput", 1);
-    js_setglobal(J, "pinput");
-    js_newcfunction(J, poutput, "poutput", 2);
-    js_setglobal(J, "poutput");
-    js_newcfunction(J, puser_set, "puser_set", 2);
-    js_setglobal(J, "puser_set");
-    js_newcfunction(J, puser_get, "puser_get", 1);
-    js_setglobal(J, "puser_get");
-    js_dostring(J, (const char*)builtin_script_js);
+    REGISTER_C_FUNCTION(alert, 1);
+    REGISTER_C_FUNCTION(pinput, 1);
+    REGISTER_C_FUNCTION(poutput, 2);
+    REGISTER_C_FUNCTION(puser_set, 2);
+    REGISTER_C_FUNCTION(puser_get, 1);
+    js_dostring(J, (const char *)builtin_script_js);
 
     len = GetModuleFileName(hInst, script_path, MAX_PATH);
     while (script_path[len] != '.' && len > 0)
