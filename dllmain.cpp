@@ -304,7 +304,7 @@ BOOL APIENTRY DllMain(HINSTANCE hInst /* Library instance handle. */,
     break;
 
   case DLL_PROCESS_DETACH:
-    info("Javascript", "Detach");
+    /* info("Javascript", "Detach"); */
     js_freestate(J);
     break;
 
